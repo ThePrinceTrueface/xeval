@@ -76,6 +76,16 @@ export interface CssUpdateOptions {
 /** Options for Xeval.loadFrom() */
 export interface LoadFromOptions {
     type?: XevalFileType
+    /** Cache TTL in milliseconds. If omitted, cache never expires. */
+    ttl?: number
+}
+
+/** Internal cache entry */
+interface CacheEntry {
+    source: string
+    type: XevalFileType
+    cachedAt: number
+    ttl: number | null
 }
 
 /** Options for CoreEngine.render() */
@@ -453,6 +463,10 @@ export class CSSEngine extends CoreEngine {
 
 class Xeval {
 
+    // ── Source cache ───────────────────────────
+    // Map<url, CacheEntry> — shared across all loadFrom() calls
+    #cache: Map<string, CacheEntry> = new Map()
+
     /** Prepare a JS script from a raw source string */
     prepare(source: string): ScriptEngine {
         return new ScriptEngine(source)
@@ -472,8 +486,11 @@ class Xeval {
      * Load a JS, HTML, or CSS file from a remote URL.
      * Type is auto-detected from the file extension (.js, .mjs, .html, .htm, .css).
      * Pass { type } explicitly when the URL has no recognizable extension.
+     * Pass { ttl } in milliseconds to set a cache expiry. Omit for permanent cache.
+     * If a fetch fails and a cached version exists, the cache is served as fallback.
      */
     async loadFrom(url: string, options: LoadFromOptions = {}): Promise<ScriptEngine | HtmlEngine | CSSEngine> {
+        const { ttl = null } = options
         const resolvedType: XevalFileType | null = options.type ?? detectTypeFromUrl(url)
 
         if (!resolvedType) {
@@ -483,6 +500,21 @@ class Xeval {
             )
         }
 
+        // ── Check cache ────────────────────────
+        const cached = this.#cache.get(url)
+
+        if (cached) {
+            const isExpired = cached.ttl !== null && (Date.now() - cached.cachedAt) > cached.ttl
+            if (!isExpired) {
+                console.debug(`${XEVAL_TAG} cache hit for "${url}"`)
+                return this.#buildEngine(cached.source, cached.type)
+            }
+            // expired — remove and refetch
+            this.#cache.delete(url)
+            console.debug(`${XEVAL_TAG} cache expired for "${url}" — refetching`)
+        }
+
+        // ── Fetch ──────────────────────────────
         try {
             const response = await globalThis.fetch(url)
 
@@ -494,14 +526,75 @@ class Xeval {
 
             const source = await response.text()
 
-            if (resolvedType === 'html') return new HtmlEngine(source)
-            if (resolvedType === 'css')  return new CSSEngine(source)
-            return new ScriptEngine(source)
+            // store in cache
+            this.#cache.set(url, {
+                source,
+                type: resolvedType,
+                cachedAt: Date.now(),
+                ttl
+            })
+
+            return this.#buildEngine(source, resolvedType)
 
         } catch (err) {
+            // ── Network fallback ───────────────
+            // If fetch fails but we have a stale (expired) cache entry, serve it
+            const stale = this.#cache.get(url)
+            if (stale) {
+                console.warn(`${XEVAL_TAG} fetch failed for "${url}" — serving stale cache as fallback`)
+                return this.#buildEngine(stale.source, stale.type)
+            }
+
             console.error(`${XEVAL_TAG} loadFrom error:`, err)
             throw err
         }
+    }
+
+    /**
+     * Clear the source cache
+     * - Pass a URL to remove a single entry
+     * - Call with no argument to clear the entire cache
+     */
+    clearCache(url?: string): void {
+        if (url) {
+            const deleted = this.#cache.delete(url)
+            if (!deleted) {
+                console.warn(`${XEVAL_TAG} clearCache() — no cache entry found for "${url}"`)
+            }
+        } else {
+            this.#cache.clear()
+        }
+    }
+
+    /**
+     * Check whether a URL is currently cached and not expired
+     */
+    isCached(url: string): boolean {
+        const entry = this.#cache.get(url)
+        if (!entry) return false
+        if (entry.ttl !== null && (Date.now() - entry.cachedAt) > entry.ttl) return false
+        return true
+    }
+
+    /**
+     * Return cache metadata for a given URL, or null if not cached
+     */
+    cacheInfo(url: string): { cachedAt: number; ttl: number | null; type: XevalFileType } | null {
+        const entry = this.#cache.get(url)
+        if (!entry) return null
+        return {
+            cachedAt: entry.cachedAt,
+            ttl:      entry.ttl,
+            type:     entry.type
+        }
+    }
+
+    // ── Private helpers ────────────────────────
+
+    #buildEngine(source: string, type: XevalFileType): ScriptEngine | HtmlEngine | CSSEngine {
+        if (type === 'html') return new HtmlEngine(source)
+        if (type === 'css')  return new CSSEngine(source)
+        return new ScriptEngine(source)
     }
 }
 
