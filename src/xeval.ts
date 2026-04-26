@@ -32,12 +32,17 @@ export type XevalFileType = 'js' | 'html' | 'css'
 /** DOM insertion positions for HtmlEngine */
 export type InsertPosition = 'append' | 'prepend' | 'before' | 'after' | 'replace'
 
+/** Callback fired after an element is injected into the DOM */
+export type InjectCallback<T extends Element> = (el: T, key: string) => void | Promise<void>
+
 /** Options for ScriptEngine.run() */
 export interface ScriptRunOptions {
     context?: Context
     module?: boolean
     id?: string
     target?: string | Element
+    /** Callback fired after this specific injection. Called before the engine-level callback. */
+    onInject?: InjectCallback<HTMLScriptElement>
 }
 
 /** Options for HtmlEngine.run() */
@@ -48,6 +53,8 @@ export interface HtmlRunOptions {
     safe?: boolean
     id?: string
     class?: string
+    /** Callback fired after this specific injection. Called before the engine-level callback. */
+    onInject?: InjectCallback<HTMLDivElement>
 }
 
 /** Options for HtmlEngine.update() */
@@ -64,6 +71,8 @@ export interface CssRunOptions {
     target?: string | Element
     id?: string
     media?: string
+    /** Callback fired after this specific injection. Called before the engine-level callback. */
+    onInject?: InjectCallback<HTMLStyleElement>
 }
 
 /** Options for CSSEngine.update() */
@@ -133,6 +142,7 @@ export abstract class CoreEngine {
 
     #source: string
     #keyRegistry: Map<string, Element> = new Map()
+    #engineInjectCallback: InjectCallback<Element> | null = null
 
     constructor(source: string) {
         if (typeof source !== 'string') {
@@ -239,6 +249,31 @@ export abstract class CoreEngine {
         this.#keyRegistry.clear()
     }
 
+    // ── Callbacks ──────────────────────────────
+
+    /**
+     * Register a callback fired after every injection made by this engine instance.
+     * Called after the run()-level callback if both are defined.
+     * Returns the engine instance for chaining.
+     */
+    onInject(callback: InjectCallback<Element>): this {
+        this.#engineInjectCallback = callback
+        return this
+    }
+
+    /**
+     * Fire both the run-level and engine-level onInject callbacks
+     * Order: run() callback first → engine callback second
+     */
+    protected async _fireInject<T extends Element>(
+        el: T,
+        key: string,
+        runCallback?: InjectCallback<T>
+    ): Promise<void> {
+        if (runCallback) await runCallback(el, key)
+        if (this.#engineInjectCallback) await this.#engineInjectCallback(el, key)
+    }
+
     // ── Source access ──────────────────────────
 
     /**
@@ -272,7 +307,7 @@ export class ScriptEngine extends CoreEngine {
      * @returns the injected HTMLScriptElement (carries data-xeval-key)
      */
     run(options: ScriptRunOptions = {}): HTMLScriptElement {
-        const { context, module: asModule = false, id, target } = options
+        const { context, module: asModule = false, id, target, onInject } = options
 
         const interpolatedCode = this._interpolate(this._source, context)
         const container = resolveTarget(target, document.body)
@@ -282,8 +317,11 @@ export class ScriptEngine extends CoreEngine {
         if (id) script.id = id
         script.textContent = interpolatedCode
 
-        this._stamp(script)
+        const key = this._stamp(script)
         container.appendChild(script)
+
+        // fire callbacks asynchronously — script has already executed at this point
+        void this._fireInject(script, key, onInject)
 
         return script
     }
@@ -317,7 +355,8 @@ export class HtmlEngine extends CoreEngine {
             position = 'append',
             safe = false,
             id,
-            class: className
+            class: className,
+            onInject
         } = options
 
         const interpolatedHTML = this._interpolate(this._source, context)
@@ -329,8 +368,10 @@ export class HtmlEngine extends CoreEngine {
         if (id) wrapper.id = id
         if (className) wrapper.className = className
 
-        this._stamp(wrapper)
+        const key = this._stamp(wrapper)
         this._insert(wrapper, container, position)
+
+        void this._fireInject(wrapper, key, onInject)
 
         return wrapper
     }
@@ -410,7 +451,7 @@ export class CSSEngine extends CoreEngine {
      * @returns the injected HTMLStyleElement (carries data-xeval-key)
      */
     run(options: CssRunOptions = {}): HTMLStyleElement {
-        const { context, target, id, media } = options
+        const { context, target, id, media, onInject } = options
 
         const interpolatedCSS = this._interpolate(this._source, context)
         const container = resolveTarget(target, document.head)
@@ -420,8 +461,10 @@ export class CSSEngine extends CoreEngine {
         if (id) styleEl.id = id
         if (media) styleEl.media = media
 
-        this._stamp(styleEl)
+        const key = this._stamp(styleEl)
         container.appendChild(styleEl)
+
+        void this._fireInject(styleEl, key, onInject)
 
         return styleEl
     }
