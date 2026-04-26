@@ -111,6 +111,74 @@ function generateKey(): string {
     return crypto.randomUUID()
 }
 
+/**
+ * Serialize a function value into an arrow function const declaration.
+ *
+ * Handles all standard cases:
+ *   - Named function:          function greet(name) { ... }  → (name) => { ... }
+ *   - Anonymous function:      function(name) { ... }        → (name) => { ... }
+ *   - No-param function:       function init() { ... }       → () => { ... }
+ *   - Multi-param function:    function add(a, b) { ... }    → (a, b) => { ... }
+ *   - Default params:          function greet(n = 'x') { }   → (n = 'x') => { ... }
+ *   - Rest params:             function sum(...args) { ... }  → (...args) => { ... }
+ *   - Async function:          async function load(url) { }  → async (url) => { ... }
+ *   - Arrow function:          (name) => name                → left as-is
+ *   - Async arrow:             async (url) => ...            → left as-is
+ *   - Single-param arrow:      n => n * 2                    → left as-is
+ *   - Shorthand method:        greet(name) { ... }           → (name) => { ... }
+ *
+ * Generators (function*) are not supported — returned as-is with a warning.
+ *
+ * @param fn - The function to serialize
+ * @returns A string representing an arrow function expression
+ */
+function serializeFunction(fn: (...args: unknown[]) => unknown): string {
+    const fnStr = fn.toString().trim()
+
+    // ── Generator — not supported ──────────────
+    if (/^(?:async\s+)?function\s*\*/.test(fnStr)) {
+        console.warn(`${XEVAL_TAG} serializeFunction() — generator functions are not supported and will be injected as-is`)
+        return fnStr
+    }
+
+    // ── Already an arrow function ──────────────
+    // Matches: (params) => ... | async (params) => ... | param => ...
+    const isArrow = /^(?:async\s+)?(?:\(|[\w$]+\s*=>)/.test(fnStr)
+        && !fnStr.startsWith('function')
+        && !fnStr.startsWith('async function')
+    if (isArrow) return fnStr
+
+    // ── Named or anonymous function ────────────
+    // Matches: [async] function [name](params) { body }
+    const namedMatch = fnStr.match(
+        /^(async\s+)?function\s*[\w$]*\s*(\([^)]*\))\s*(\{[\s\S]*\})$/
+    )
+    if (namedMatch) {
+        const asyncKw = namedMatch[1] ? 'async ' : ''
+        const params  = namedMatch[2]   // e.g. "(name, age = 0)"
+        const body    = namedMatch[3]   // e.g. "{ return name }"
+        return `${asyncKw}${params} => ${body}`
+    }
+
+    // ── Shorthand method ───────────────────────
+    // Matches: [async] methodName(params) { body }
+    // (produced by obj.method.toString() in some engines)
+    const shorthandMatch = fnStr.match(
+        /^(async\s+)?[\w$]+\s*(\([^)]*\))\s*(\{[\s\S]*\})$/
+    )
+    if (shorthandMatch) {
+        const asyncKw = shorthandMatch[1] ? 'async ' : ''
+        const params  = shorthandMatch[2]
+        const body    = shorthandMatch[3]
+        return `${asyncKw}${params} => ${body}`
+    }
+
+    // ── Fallback ───────────────────────────────
+    // Unknown function form — return as-is and let the browser handle it
+    console.warn(`${XEVAL_TAG} serializeFunction() — unrecognized function form, injecting as-is`)
+    return fnStr
+}
+
 function detectTypeFromUrl(url: string): XevalFileType | null {
     const clean = url.split('?')[0].split('#')[0]
     if (clean.endsWith('.html') || clean.endsWith('.htm')) return 'html'
@@ -164,12 +232,7 @@ export abstract class CoreEngine {
             const value = context[key]
 
             if (typeof value === 'function') {
-                const fnStr = value.toString()
-                const isArrow = fnStr.includes('=>')
-                const serializedFn = isArrow
-                    ? fnStr
-                    : fnStr.replace(/^function\s*\w*\s*/, '').replace(/^/, '() => ')
-                return `const ${key} = ${serializedFn}`
+                return `const ${key} = ${serializeFunction(value as (...args: unknown[]) => unknown)}`
             }
 
             if (typeof value === 'object') {
