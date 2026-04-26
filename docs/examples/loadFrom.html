@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>xeval - loadFrom()</title>
+  </head>
+  <body>
+    <script type="module">
+      import xeval from "../../dist/xeval.esm.js";
+
+      const engine = await xeval.loadFrom("/assets/demo.js", { type: "js" });
+      engine.run();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>xeval - HtmlEngine</title>
+  </head>
+  <body>
+    <main id="app"></main>
+    <script type="module">
+      import xeval from "../../dist/xeval.esm.js";
+
+      xeval.prepareHTML("<h1>Bienvenue $$user</h1>").run({
+        target: "#app",
+        context: { user: "Alice" }
+      });
+    </script>
+  </body>
+</html>

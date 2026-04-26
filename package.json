@@ -1,0 +1,59 @@
+{
+  "name": "xeval",
+  "version": "5.0.0",
+  "description": "Dynamic script, HTML & CSS injection library with template engine",
+  "type": "module",
+  "main": "./dist/xeval.cjs.js",
+  "module": "./dist/xeval.esm.js",
+  "types": "./dist/xeval.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/xeval.esm.js",
+      "require": "./dist/xeval.cjs.js",
+      "types": "./dist/xeval.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "CHANGELOG.md",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "rollup -c rollup.config.js",
+    "dev": "rollup -c rollup.config.js --watch",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run typecheck && npm run build",
+    "clean": "node -e 'const fs=require('fs');['dist/xeval.esm.js','dist/xeval.cjs.js','dist/xeval.min.js','dist/xeval.d.ts'].forEach(f=>fs.existsSync(f)&&fs.unlinkSync(f)); fs.existsSync('dist/src')&&fs.rmSync('dist/src',{recursive:true,force:true});'"
+  },
+  "keywords": [
+    "script",
+    "injection",
+    "dynamic",
+    "html",
+    "css",
+    "template",
+    "eval",
+    "dom",
+    "typescript",
+    "spa"
+  ],
+  "author": "ThePrinceTrueface",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ThePrinceTrueface/xeval.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ThePrinceTrueface/xeval/issues"
+  },
+  "homepage": "https://github.com/ThePrinceTrueface/xeval#readme",
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^15.0.0",
+    "@rollup/plugin-typescript": "^11.0.0",
+    "rollup": "^4.0.0",
+    "rollup-plugin-terser": "^7.0.0",
+    "tslib": "^2.0.0",
+    "typescript": "^5.0.0"
+  }
+}

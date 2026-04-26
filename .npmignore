@@ -1,0 +1,23 @@
+# Source and development-only folders
+src/
+tests/
+docs/
+.github/
+
+# Local tooling and editor files
+.vscode/
+.idea/
+comit-v.bat
+
+# Build/config files not needed at runtime
+rollup.config.mjs
+tsconfig.json
+tsconfig.types.json
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Misc
+*.log
+.DS_Store
+Thumbs.db

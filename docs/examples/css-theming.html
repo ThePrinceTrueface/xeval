@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>xeval - CSSEngine</title>
+  </head>
+  <body>
+    <p class="demo">Texte theming</p>
+    <script type="module">
+      import xeval from "../../dist/xeval.esm.js";
+
+      xeval.prepareCSS(".demo { color: $$color; font-weight: 700; }").run({
+        context: { color: "rebeccapurple" }
+      });
+    </script>
+  </body>
+</html>

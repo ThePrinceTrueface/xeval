@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>xeval - ScriptEngine basic</title>
+  </head>
+  <body>
+    <script type="module">
+      import xeval from "../../dist/xeval.esm.js";
+
+      xeval.prepare('console.log("Hello $$name")').run({
+        context: { name: "world" }
+      });
+    </script>
+  </body>
+</html>
