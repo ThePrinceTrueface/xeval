@@ -31,3 +31,8 @@ Desktop.ini
 .idea/
 *.swp
 *.swo
+
+# User
+
+comit-v.bat
+*.local.*
