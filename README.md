@@ -29,7 +29,7 @@ Most apps eventually need to run or inject dynamic content at runtime — a plug
 **xeval gives you a clean, typed, chainable API** to do all of this — without a bundler, without a framework, without boilerplate.
 
 ```ts
-import xeval from 'xeval'
+import xeval from '@ebinasoft/xeval'
 
 // Inject a dynamic script
 xeval.prepare(`console.log("Hello, $$name!")`)
@@ -66,22 +66,22 @@ theme.update({ context: { bg: '#ffffff', fg: '#0f0f0f' } })
 ## 📦 Installation
 
 ```bash
-npm install xeval
+npm install @ebinasoft/xeval
 ```
 
 ```bash
-yarn add xeval
+yarn add @ebinasoft/xeval
 ```
 
 ```bash
-pnpm add xeval
+pnpm add @ebinasoft/xeval
 ```
 
 **Via CDN** — no install needed:
 
 ```html
 <script type="module">
-  import xeval from 'https://cdn.jsdelivr.net/npm/xeval/dist/xeval.esm.js'
+  import xeval from 'https://cdn.jsdelivr.net/npm/@ebinasoft/xeval/dist/xeval.esm.js'
 </script>
 ```
 
@@ -90,7 +90,7 @@ pnpm add xeval
 ## 🚀 Quick Start
 
 ```ts
-import xeval from 'xeval'
+import xeval from '@ebinasoft/xeval'
 
 // ── JS ────────────────────────────────────────
 xeval.prepare(`
