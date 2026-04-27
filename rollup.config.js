@@ -2,7 +2,7 @@ import resolve from '@rollup/plugin-node-resolve'
 import typescript from '@rollup/plugin-typescript'
 import { terser } from 'rollup-plugin-terser'
 
-const input = 'src/xeval.ts'
+const input = 'src/index.ts'
 
 const plugins = {
     base: [
