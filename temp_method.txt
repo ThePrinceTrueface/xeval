@@ -1,0 +1,24 @@
+﻿    /**
+     * Détecte si le HTML fourni représente un seul élément racine
+     * @param html - Chaîne HTML à analyser
+     * @returns true si c'est un seul élément, false sinon
+     */
+    protected _isSingleElementHTML(html: string): boolean {
+        const trimmed = html.trim()
+        // Vérifier si ça commence par une balise ouvrante et finit par la balise fermante correspondante
+        const openingTagMatch = trimmed.match(/^<([a-zA-Z][a-zA-Z0-9]*)(?:\s[^>]*)?>/)
+        if (!openingTagMatch) {
+            return false // Pas de balise ouvrante valide
+        }
+        const tagName = openingTagMatch[1].toLowerCase()
+        // Vérifier si ça finit par la balise fermante correspondante
+        const closingTag = </>
+        if (!trimmed.endsWith(closingTag)) {
+            return false // Ne finit pas par la balise fermante correcte
+        }
+        // Compter les balises ouvrantes et fermantes pour s'assurer qu'il n'y a qu'un seul élément racine
+        const tempContainer = document.createElement('div')
+        tempContainer.innerHTML = trimmed
+        // Vérifier qu'il y a exactement un élément enfant et pas de texte adjacent
+        return tempContainer.children.length === 1 && tempContainer.firstElementChild?.tagName.toLowerCase() === tagName
+    }
