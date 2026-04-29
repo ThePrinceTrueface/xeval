@@ -28,7 +28,7 @@ export interface HtmlRunOptions {
     safe?: boolean
     id?: string
     class?: string
-    onInject?: InjectCallback<HTMLDivElement>
+    onInject?: InjectCallback<Element>
 }
 
 export interface HtmlUpdateOptions {

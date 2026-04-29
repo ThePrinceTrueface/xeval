@@ -5,7 +5,7 @@ import { XEVAL_TAG } from '../constants'
 
 export class HtmlEngine extends CoreEngine {
 
-    run(options: HtmlRunOptions = {}): HTMLDivElement {
+    run(options: HtmlRunOptions = {}): Element {
         const {
             context,
             target,
@@ -19,18 +19,67 @@ export class HtmlEngine extends CoreEngine {
         const interpolatedHTML = this._interpolate(this._source, context)
         const container = resolveTarget(target, document.body)
 
-        const wrapper = document.createElement('div')
-        this._applyContent(wrapper, interpolatedHTML, safe)
+        // Détecter si le HTML est un seul élément racine
+        const isSingleElement = this._isSingleElementHTML(interpolatedHTML)
 
-        if (id) wrapper.id = id
-        if (className) wrapper.className = className
+        let elementToInject: Element
 
-        const key = this._stamp(wrapper)
-        this._insert(wrapper, container, position)
+        if (isSingleElement) {
+            // Créer un élément temporaire pour extraire l'élément unique
+            const tempContainer = document.createElement('div')
+            tempContainer.innerHTML = interpolatedHTML.trim()
+            elementToInject = tempContainer.firstElementChild as Element
 
-        void this._fireInject(wrapper, key, onInject)
+            // Appliquer les attributs sur l'élément extrait
+            if (id) elementToInject.id = id
+            if (className) elementToInject.className = className
+        } else {
+            // Utiliser un wrapper div pour plusieurs éléments ou fragments
+            const wrapper = document.createElement('div')
+            this._applyContent(wrapper, interpolatedHTML, safe)
 
-        return wrapper
+            if (id) wrapper.id = id
+            if (className) wrapper.className = className
+
+            elementToInject = wrapper
+        }
+
+        const key = this._stamp(elementToInject)
+        this._insert(elementToInject, container, position)
+
+        void this._fireInject(elementToInject, key, onInject)
+
+        return elementToInject
+    }
+
+    /**
+     * Détecte si le HTML fourni représente un seul élément racine
+     * @param html - Chaîne HTML à analyser
+     * @returns true si c'est un seul élément, false sinon
+     */
+    protected _isSingleElementHTML(html: string): boolean {
+        const trimmed = html.trim()
+
+        // Vérifier si ça commence par une balise ouvrante et finit par la balise fermante correspondante
+        const openingTagMatch = trimmed.match(/^<([a-zA-Z][a-zA-Z0-9]*)(?:\s[^>]*)?>/)
+        if (!openingTagMatch) {
+            return false // Pas de balise ouvrante valide
+        }
+
+        const tagName = openingTagMatch[1].toLowerCase()
+
+        // Vérifier si ça finit par la balise fermante correspondante
+        const closingTag = `</${tagName}>`
+        if (!trimmed.endsWith(closingTag)) {
+            return false // Ne finit pas par la balise fermante correcte
+        }
+
+        // Compter les balises ouvrantes et fermantes pour s'assurer qu'il n'y a qu'un seul élément racine
+        const tempContainer = document.createElement('div')
+        tempContainer.innerHTML = trimmed
+
+        // Vérifier qu'il y a exactement un élément enfant et pas de texte adjacent
+        return tempContainer.children.length === 1 && tempContainer.firstElementChild?.tagName.toLowerCase() === tagName
     }
 
     update(options: HtmlUpdateOptions = {}): Element | null {
@@ -85,7 +134,7 @@ export class HtmlEngine extends CoreEngine {
         }
     }
 
-    inject(options: HtmlRunOptions = {}): HTMLDivElement {
+    inject(options: HtmlRunOptions = {}): Element {
         return this.run(options)
     }
 }

@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>xeval - Test Unwrap HTML</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background-color: #f5f5f5;
+      }
+      .test-section {
+        background: white;
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      h2 {
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 10px;
+      }
+      .test-result {
+        background-color: #f0f8ff;
+        border-left: 4px solid #007bff;
+        padding: 10px;
+        margin: 10px 0;
+      }
+      button {
+        background-color: #28a745;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #218838;
+      }
+      .injected-content {
+        background-color: #fffacd;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🧪 Test xeval - Élimination des divs inutiles</h1>
+
+    <div class="test-section">
+      <h2>Test 1: Injection d'un simple bouton</h2>
+      <p>Avant, on obtenait: <code>&lt;div&gt;&lt;button&gt;...&lt;/button&gt;&lt;/div&gt;</code></p>
+      <p>Après: <code>&lt;button&gt;...&lt;/button&gt;</code></p>
+      <div id="test1"></div>
+      <div class="test-result" id="test1-result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>Test 2: Injection d'un simple h1</h2>
+      <p>Avant, on obtenait: <code>&lt;div&gt;&lt;h1&gt;...&lt;/h1&gt;&lt;/div&gt;</code></p>
+      <p>Après: <code>&lt;h1&gt;...&lt;/h1&gt;</code></p>
+      <div id="test2"></div>
+      <div class="test-result" id="test2-result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>Test 3: Injection de plusieurs éléments (doit garder le wrapper)</h2>
+      <p>Avant ET Après: <code>&lt;div&gt;&lt;p&gt;...&lt;/p&gt;&lt;p&gt;...&lt;/p&gt;&lt;/div&gt;</code></p>
+      <div id="test3"></div>
+      <div class="test-result" id="test3-result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>Test 4: Injection avec attributs id et class</h2>
+      <p>Les attributs doivent être appliqués directement à l'élément extrait</p>
+      <div id="test4"></div>
+      <div class="test-result" id="test4-result"></div>
+    </div>
+
+    <script type="module">
+      import xeval from "./dist/xeval.esm.js";
+
+      // Test 1: Simple button
+      const btn = xeval.prepareHTML('<button>Click me!</button>').run({
+        target: '#test1'
+      });
+      document.getElementById('test1-result').innerHTML = `
+        <strong>Élément injecté:</strong> ${btn.tagName}<br>
+        <strong>Type:</strong> ${btn.constructor.name}<br>
+        <strong>Parent direct:</strong> ${btn.parentElement.id}<br>
+        <strong>Contenu:</strong> <code>${btn.outerHTML}</code>
+      `;
+
+      // Test 2: Simple h1
+      const h1 = xeval.prepareHTML('<h1>Bienvenue</h1>').run({
+        target: '#test2'
+      });
+      document.getElementById('test2-result').innerHTML = `
+        <strong>Élément injecté:</strong> ${h1.tagName}<br>
+        <strong>Type:</strong> ${h1.constructor.name}<br>
+        <strong>Parent direct:</strong> ${h1.parentElement.id}<br>
+        <strong>Contenu:</strong> <code>${h1.outerHTML}</code>
+      `;
+
+      // Test 3: Multiple elements
+      const multi = xeval.prepareHTML('<p>Paragraph 1</p><p>Paragraph 2</p>').run({
+        target: '#test3'
+      });
+      document.getElementById('test3-result').innerHTML = `
+        <strong>Élément injecté:</strong> ${multi.tagName}<br>
+        <strong>Type:</strong> ${multi.constructor.name}<br>
+        <strong>Enfants:</strong> ${multi.children.length} éléments<br>
+        <strong>Contenu:</strong> <code>${multi.outerHTML}</code>
+      `;
+
+      // Test 4: With id and class
+      const styled = xeval.prepareHTML('<button>Styled Button</button>').run({
+        target: '#test4',
+        id: 'my-button',
+        class: 'btn-primary'
+      });
+      document.getElementById('test4-result').innerHTML = `
+        <strong>Élément injecté:</strong> ${styled.tagName}<br>
+        <strong>ID:</strong> ${styled.id}<br>
+        <strong>Class:</strong> ${styled.className}<br>
+        <strong>Contenu:</strong> <code>${styled.outerHTML}</code>
+      `;
+
+      console.log('✅ Tests complétés!');
+      console.log('Test 1 - Button:', btn);
+      console.log('Test 2 - H1:', h1);
+      console.log('Test 3 - Multiple:', multi);
+      console.log('Test 4 - Styled:', styled);
+    </script>
+  </body>
+</html>
+
